@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercicío Bandas</title>
+    <style>
+      h1 {
+            color: rgb(216, 152, 79);
+        }
+        body {
+            background-color: rgb(1, 90, 31);
+            font-family: Arial, sans-serif;
+            margin: 70px;
+        }
+        #search-container {
+            margin-bottom: 70px;
+            color: rgb(13, 49, 80);
+        }
+        #artist-info, #artist-works {
+            margin-top: 70px;
+            color: rgb(18, 155, 71);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: rgb(214, 185, 169);
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 5px solid #10c6e6;
+        }
+    </style>
+</head>
+<body>
+    <h1>Descubra sobre sua banda ou artista favorito:</h1>
+    <div id="search-container">
+        <input type="text" id="artist-name" placeholder="Digite o nome da banda/artista">
+        <button onclick="searchArtist()">Buscar</button>
+    </div>
+
+    <div id="artist-info"></div>
+    <div id="artist-works"></div>
+
+    <script>
+        async function searchArtist() {
+            const artistName = document.getElementById('artist-name').value;
+            const artistInfoContainer = document.getElementById('artist-info');
+            const artistWorksContainer = document.getElementById('artist-works');
+
+            artistInfoContainer.innerHTML = '';
+            artistWorksContainer.innerHTML = '';
+
+            try {
+                const response = await fetch(`https://musicbrainz.org/ws/2/artist?fmt=json&query=${encodeURIComponent(artistName)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Artist data:', data);
+
+                if (data.count === 0) {
+                    artistInfoContainer.innerHTML = 'Nenhum artista encontrado.';
+                    return;
+                }
+
+                const artist = data.artists[0];
+                const artistInfoHtml = `
+                    <h2>${artist.name}</h2>
+                    <p>Origem: ${artist.area ? artist.area.name : 'Desconhecida'}</p>
+                    <p>Atividade: ${artist['life-span'] && artist['life-span'].ended ? 'Encerrada' : 'Ativa'}</p>
+                    <p>ID do MusicBrainz: ${artist.id}</p>
+                `;
+                artistInfoContainer.innerHTML = artistInfoHtml;
+
+                const worksResponse = await fetch(`https://musicbrainz.org/ws/2/release-group?fmt=json&artist=${artist.id}`);
+                if (!worksResponse.ok) {
+                    throw new Error(`HTTP error! status: ${worksResponse.status}`);
+                }
+
+                const worksData = await worksResponse.json();
+                console.log('Works data:', worksData);
+
+                if (worksData['release-groups'].length > 0) {
+                    let worksHtml = `
+                        <h3>Trabalhos:</h3>
+                        <table>
+                            <tr>
+                                <th>Título</th>
+                                <th>Ano de Lançamento</th>
+                            </tr>
+                    `;
+                    worksData['release-groups'].forEach(work => {
+                        worksHtml += `
+                            <tr>
+                                <td>${work.title}</td>
+                                <td>${work['first-release-date'] ? work['first-release-date'] : 'Desconhecido'}</td>
+                            </tr>
+                        `;
+                    });
+                    worksHtml += `</table>`;
+                    artistWorksContainer.innerHTML = worksHtml;
+                } else {
+                    artistWorksContainer.innerHTML = 'Nenhum trabalho encontrado.';
+                }
+            } catch (error) {
+                artistInfoContainer.innerHTML = 'Erro ao buscar informações do artista.';
+                console.error('Error fetching artist data:', error);
+            }
+        }
+    </script>
+</body>
+</html>
